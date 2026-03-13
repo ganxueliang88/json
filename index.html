@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JSON Atelier</title>
+    <meta
+      name="description"
+      content="A refined JSON formatter and editor powered by jsoneditor, ready for GitHub Pages."
+    >
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    >
+    <link
+      href="https://cdn.jsdelivr.net/npm/jsoneditor@10.4.2/dist/jsoneditor.min.css"
+      rel="stylesheet"
+      type="text/css"
+    >
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsoneditor@10.4.2/dist/jsoneditor.min.js"></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <p class="eyebrow">JSON Utility</p>
+          <h1>JSON</h1>
+          <p class="subtitle">
+            简单、直接，适合部署到 <code>github.io/json/</code> 的在线格式化工具。
+          </p>
+        </div>
+        <div class="meta-row" aria-label="JSON summary">
+          <span class="meta-pill"><span class="meta-label">Mode</span><strong id="modeBadge">CODE</strong></span>
+          <span class="meta-pill"><span class="meta-label">Root</span><strong id="rootType">object</strong></span>
+          <span class="meta-pill"><span class="meta-label">Size</span><strong id="charCount">0 chars</strong></span>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <header class="toolbar" aria-label="JSON controls">
+          <div class="toolbar-group">
+            <button type="button" class="tool-button" data-action="format">Format</button>
+            <button type="button" class="tool-button" data-action="compact">Compact</button>
+            <button type="button" class="tool-button" data-action="save">Save</button>
+            <button type="button" class="tool-button" data-action="history">History</button>
+          </div>
+
+          <div class="toolbar-group toolbar-group-modes">
+            <button type="button" class="tool-button mode-button is-active" data-mode="code">
+              Code
+            </button>
+            <button type="button" class="tool-button mode-button" data-mode="tree">Tree</button>
+          </div>
+
+          <div class="toolbar-group toolbar-group-file">
+            <button type="button" class="tool-button" data-action="zoom-out">A-</button>
+            <button type="button" class="tool-button" data-action="zoom-in">A+</button>
+            <input id="fileInput" type="file" accept=".json,application/json" hidden>
+            <button type="button" class="tool-button" data-action="import">Import</button>
+            <button type="button" class="tool-button tool-button-accent" data-action="export">
+              Export
+            </button>
+            <button type="button" class="tool-button" data-action="clear">Clear</button>
+          </div>
+        </header>
+
+        <div class="statusbar" role="status" aria-live="polite">
+          <span id="statusText">Ready. Load a file or start editing.</span>
+          <span class="status-hint"><kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>S</kbd> save · <kbd>Shift</kbd> + <kbd>S</kbd> export</span>
+        </div>
+
+        <aside id="historyPanel" class="history-panel" hidden>
+          <div class="history-header">
+            <div>
+              <strong>History</strong>
+              <span><span id="historyCount">0</span> local snapshots</span>
+            </div>
+            <div class="toolbar-group">
+              <button type="button" class="tool-button" data-action="clear-history">Clear History</button>
+              <button type="button" class="tool-button" data-action="close-history">Close</button>
+            </div>
+          </div>
+          <p id="historyEmpty" class="history-empty">No saved snapshots yet. Use Save to create one.</p>
+          <ul id="historyList" class="history-list"></ul>
+        </aside>
+
+        <section class="editor-frame">
+          <div id="jsoneditor" class="editor-surface"></div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
