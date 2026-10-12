@@ -49,6 +49,10 @@ const historyPanel = document.getElementById("historyPanel");
 const historyList = document.getElementById("historyList");
 const historyEmpty = document.getElementById("historyEmpty");
 const historyCount = document.getElementById("historyCount");
+const splitPanel = document.getElementById("splitPanel");
+const splitList = document.getElementById("splitList");
+const splitTitle = document.getElementById("splitTitle");
+let splitValues = [];
 
 initEditor();
 bindControls();
@@ -102,13 +106,23 @@ function bindControls() {
     restoreHistoryItem(Number(target.dataset.historyIndex));
   });
 
+  splitList.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-split-index]");
+    if (!target) return;
+    const item = splitValues[Number(target.dataset.splitIndex)];
+    if (!item) return;
+    setEditorContent(item.value);
+    saveDraft();
+    setStatus(`已在编辑器中打开 ${item.path}。拆分结果仍保留在上方。`, "success");
+  });
+
   fileInput.addEventListener("change", async (event) => {
     const [file] = event.target.files;
     if (!file) return;
 
     try {
       const content = await file.text();
-      const parsed = JSON.parse(content);
+      const parsed = JsonInputParser.parseInput(content).value;
       setSnapshot({
         text: JSON.stringify(parsed, null, 2),
         mode: currentMode === "tree" ? "tree" : "code"
@@ -166,6 +180,15 @@ function handleAction(action) {
     case "compact":
       compactJson();
       break;
+    case "repair":
+      repairJson();
+      break;
+    case "split":
+      showSplitItems();
+      break;
+    case "close-split":
+      splitPanel.hidden = true;
+      break;
     case "save":
       saveCurrent();
       break;
@@ -206,6 +229,45 @@ function formatJson() {
   updateMeta();
   saveDraft();
   setStatus("JSON formatted.", "success");
+}
+
+function repairJson() {
+  const json = readJson();
+  if (!json.ok) return;
+  renderSerializedJson(json.value, 2);
+  updateMeta();
+  saveDraft();
+  setStatus(json.repaired ? "已安全转换为标准 JSON。" : "输入已是标准 JSON。", "success");
+}
+
+function showSplitItems() {
+  const json = readJson();
+  if (!json.ok) return;
+  const items = JsonInputParser.splitItems(json.value);
+  if (!Array.isArray(json.value)) {
+    setStatus("拆分列表需要顶层为数组；单个对象可直接在编辑器查看。", "error", { persist: true });
+    return;
+  }
+  splitValues = items;
+  splitList.replaceChildren();
+  splitTitle.textContent = `拆分结果 · ${items.length} 项`;
+  items.forEach((item, index) => {
+    const card = document.createElement("article");
+    card.className = "split-item";
+    const title = document.createElement("strong");
+    title.textContent = item.path;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "tool-button";
+    button.dataset.splitIndex = index;
+    button.textContent = "在编辑器中打开";
+    const preview = document.createElement("pre");
+    preview.textContent = JSON.stringify(item.value, null, 2);
+    card.append(title, button, preview);
+    splitList.appendChild(card);
+  });
+  splitPanel.hidden = false;
+  setStatus(`已拆分 ${items.length} 项，原始列表未被修改。`, "success");
 }
 
 function compactJson() {
@@ -272,6 +334,10 @@ function switchMode(mode) {
   try {
     const snapshot = readJson();
     if (snapshot.ok) {
+      // Normalize code before switching: jsoneditor may reject Python literals on setMode.
+      if (currentMode === "code" && mode === "tree") {
+        editor.setText(JSON.stringify(snapshot.value, null, 2));
+      }
       editor.setMode(mode);
       currentMode = mode;
       setEditorContent(snapshot.value);
@@ -303,9 +369,10 @@ function readJson() {
       if (!text.trim()) {
         return { ok: true, value: {} };
       }
-      return { ok: true, value: JSON.parse(text) };
+      const parsed = JsonInputParser.parseInput(text);
+      return { ok: true, ...parsed };
     } catch (fallbackError) {
-      setStatus(`Invalid JSON: ${fallbackError.message}`, "error", { persist: true });
+      setStatus(`输入无法安全纠错：${fallbackError.message}`, "error", { persist: true });
       return { ok: false };
     }
   }

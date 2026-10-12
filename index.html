@@ -21,6 +21,7 @@
     >
     <link rel="stylesheet" href="./style.css">
     <script src="https://cdn.jsdelivr.net/npm/jsoneditor@10.4.2/dist/jsoneditor.min.js"></script>
+    <script src="./input-parser.js" defer></script>
     <script src="./app.js" defer></script>
   </head>
   <body>
@@ -45,6 +46,8 @@
           <div class="toolbar-group">
             <button type="button" class="tool-button" data-action="format">Format</button>
             <button type="button" class="tool-button" data-action="compact">Compact</button>
+            <button type="button" class="tool-button" data-action="repair" title="将 Python 字典文本安全转换成标准 JSON">自动纠错</button>
+            <button type="button" class="tool-button" data-action="split" title="展开列表中的每个对象">拆分列表</button>
             <button type="button" class="tool-button" data-action="save">Save</button>
             <button type="button" class="tool-button" data-action="history">History</button>
           </div>
@@ -87,6 +90,15 @@
           <p id="historyEmpty" class="history-empty">No saved snapshots yet. Use Save to create one.</p>
           <ul id="historyList" class="history-list"></ul>
         </aside>
+
+        <section id="splitPanel" class="split-panel" hidden aria-label="拆分结果">
+          <div class="split-header">
+            <strong id="splitTitle">拆分结果</strong>
+            <button type="button" class="tool-button" data-action="close-split">关闭</button>
+          </div>
+          <p class="split-hint">逐项查看列表中的对象；点击“在编辑器中打开”可单独编辑。</p>
+          <div id="splitList" class="split-list"></div>
+        </section>
 
         <section class="editor-frame">
           <div id="jsoneditor" class="editor-surface"></div>
