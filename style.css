@@ -225,6 +225,42 @@ kbd {
   overflow: auto;
 }
 
+.value-search {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.value-search-form { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.value-search-form label { font-size: 16px; font-weight: 500; }
+.value-search-form input {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+.value-search-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.value-search-hint, .value-search-summary { margin: 8px 0 0; color: #4b5563; font-size: 14px; line-height: 1.5; }
+.value-search-results { max-height: 30vh; overflow: auto; }
+.value-search-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+.value-search-row code { flex: 1 1 260px; overflow-wrap: anywhere; font-size: 14px; }
+.value-search-value { color: #4b5563; font-size: 14px; overflow-wrap: anywhere; }
+
 .split-header {
   display: flex;
   align-items: center;

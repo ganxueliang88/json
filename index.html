@@ -76,6 +76,16 @@
           <span class="status-hint"><kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>S</kbd> save · <kbd>Shift</kbd> + <kbd>S</kbd> export</span>
         </div>
 
+        <section class="value-search" aria-label="按值查找路径">
+          <form id="valueSearchForm" class="value-search-form">
+            <label for="valueSearchInput">按值找路径</label>
+            <input id="valueSearchInput" type="search" placeholder="例如：普通号" autocomplete="off">
+            <button type="submit" class="tool-button">查找</button>
+          </form>
+          <p class="value-search-hint">在当前完整数据的所有值中查找，路径以 data 开头；支持部分匹配。</p>
+          <div id="valueSearchResults" class="value-search-results" aria-live="polite"></div>
+        </section>
+
         <aside id="historyPanel" class="history-panel" hidden>
           <div class="history-header">
             <div>

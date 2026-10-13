@@ -52,7 +52,11 @@ const historyCount = document.getElementById("historyCount");
 const splitPanel = document.getElementById("splitPanel");
 const splitList = document.getElementById("splitList");
 const splitTitle = document.getElementById("splitTitle");
+const valueSearchForm = document.getElementById("valueSearchForm");
+const valueSearchInput = document.getElementById("valueSearchInput");
+const valueSearchResults = document.getElementById("valueSearchResults");
 let splitValues = [];
+let searchTimer;
 
 initEditor();
 bindControls();
@@ -69,6 +73,7 @@ function initEditor() {
     onChange: () => {
       updateMeta();
       scheduleDraftSave();
+      scheduleValueSearch();
       setStatus("Editing in progress.", "idle", { reset: false });
     },
     onModeChange: (newMode) => {
@@ -114,6 +119,34 @@ function bindControls() {
     setEditorContent(item.value);
     saveDraft();
     setStatus(`已在编辑器中打开 ${item.path}。拆分结果仍保留在上方。`, "success");
+  });
+
+  valueSearchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    window.clearTimeout(searchTimer);
+    renderValueSearch();
+  });
+  valueSearchInput.addEventListener("input", scheduleValueSearch);
+  valueSearchResults.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-copy-path]");
+    if (!button) return;
+    const path = button.dataset.copyPath;
+    try {
+      await navigator.clipboard.writeText(path);
+      setStatus(`已复制路径：${path}`, "success");
+    } catch (error) {
+      // Clipboard API may be unavailable on non-secure origins.
+      const fallback = document.createElement("textarea");
+      fallback.value = path;
+      fallback.style.position = "fixed";
+      fallback.style.opacity = "0";
+      document.body.appendChild(fallback);
+      fallback.select();
+      const copied = document.execCommand("copy");
+      fallback.remove();
+      setStatus(copied ? `已复制路径：${path}` : "复制失败，请手动选中路径复制。",
+        copied ? "success" : "error", { persist: !copied });
+    }
   });
 
   fileInput.addEventListener("change", async (event) => {
@@ -268,6 +301,45 @@ function showSplitItems() {
   });
   splitPanel.hidden = false;
   setStatus(`已拆分 ${items.length} 项，原始列表未被修改。`, "success");
+}
+
+function scheduleValueSearch() {
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(renderValueSearch, 180);
+}
+
+function renderValueSearch() {
+  const query = valueSearchInput.value.trim();
+  valueSearchResults.replaceChildren();
+  if (!query) return;
+  // Keep search non-destructive: search the editor's current value without normalizing it.
+  const parsed = readJsonSilently();
+  const summary = document.createElement("p");
+  summary.className = "value-search-summary";
+  if (!parsed.ok) {
+    summary.textContent = "当前数据无法解析，请先修正输入后再查找。";
+    valueSearchResults.appendChild(summary);
+    return;
+  }
+  const matches = JsonInputParser.findValuePaths(parsed.value, query);
+  summary.textContent = matches.length ? `找到 ${matches.length} 条匹配路径` : "没有找到匹配的值。";
+  valueSearchResults.appendChild(summary);
+  for (const match of matches) {
+    const row = document.createElement("div");
+    row.className = "value-search-row";
+    const path = document.createElement("code");
+    path.textContent = match.path;
+    const value = document.createElement("span");
+    value.className = "value-search-value";
+    value.textContent = `值：${JSON.stringify(match.value)}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "tool-button";
+    button.textContent = "复制路径";
+    button.dataset.copyPath = match.path;
+    row.append(path, value, button);
+    valueSearchResults.appendChild(row);
+  }
 }
 
 function compactJson() {
@@ -428,8 +500,11 @@ function readJsonSilently() {
   try {
     return { ok: true, value: editor.get() };
   } catch (primaryError) {
-    const parsed = parseText(readRawText());
-    return parsed.ok ? parsed : { ok: false };
+    try {
+      return { ok: true, ...JsonInputParser.parseInput(readRawText()) };
+    } catch (error) {
+      return { ok: false };
+    }
   }
 }
 
