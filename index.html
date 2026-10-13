@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="./style.css">
     <script src="https://cdn.jsdelivr.net/npm/jsoneditor@10.4.2/dist/jsoneditor.min.js"></script>
     <script src="./input-parser.js" defer></script>
+    <script src="./value-locations.js" defer></script>
     <script src="./app.js" defer></script>
   </head>
   <body>
@@ -81,6 +82,7 @@
             <label for="valueSearchInput">按值找路径</label>
             <input id="valueSearchInput" type="search" placeholder="例如：普通号" autocomplete="off">
             <button type="submit" class="tool-button">查找</button>
+            <button type="button" class="tool-button" id="clearValueSearch">清除查找</button>
           </form>
           <p class="value-search-hint">在当前完整数据的所有值中查找，路径以 data 开头；支持部分匹配。</p>
           <div id="valueSearchResults" class="value-search-results" aria-live="polite"></div>

@@ -61,32 +61,32 @@ test("malformed or ambiguous input is not silently repaired", () => {
 test("finds nested string values with data as the root", () => {
   const data = parseInput("{'doctor': {'doctor_name': '普通号'}, 'name': '假日门诊'}").value;
   assert.deepEqual(findValuePaths(data, "普通号"), [
-    { path: "data['doctor']['doctor_name']", value: "普通号" }
+    { path: "data['doctor']['doctor_name']", value: "普通号", segments: ["doctor", "doctor_name"] }
   ]);
 });
 
 test("lists every matching leaf value across arrays and repeated keys", () => {
   const data = [{ doctor: { doctor_name: "普通号" }, other: "普通号" }, { doctor_name: "普通号" }];
   assert.deepEqual(findValuePaths(data, "普通号"), [
-    { path: "data[0]['doctor']['doctor_name']", value: "普通号" },
-    { path: "data[0]['other']", value: "普通号" },
-    { path: "data[1]['doctor_name']", value: "普通号" }
+    { path: "data[0]['doctor']['doctor_name']", value: "普通号", segments: [0, "doctor", "doctor_name"] },
+    { path: "data[0]['other']", value: "普通号", segments: [0, "other"] },
+    { path: "data[1]['doctor_name']", value: "普通号", segments: [1, "doctor_name"] }
   ]);
 });
 
 test("supports partial search, numbers, booleans, null, and escaped property names", () => {
   const data = { "a'b\\c": "special", count: 45, flag: false, missing: null };
   assert.deepEqual(findValuePaths(data, "pec"), [
-    { path: "data['a\\'b\\\\c']", value: "special" }
+    { path: "data['a\\'b\\\\c']", value: "special", segments: ["a'b\\c"] }
   ]);
-  assert.deepEqual(findValuePaths(data, "45"), [{ path: "data['count']", value: 45 }]);
-  assert.deepEqual(findValuePaths(data, "false"), [{ path: "data['flag']", value: false }]);
-  assert.deepEqual(findValuePaths(data, "null"), [{ path: "data['missing']", value: null }]);
+  assert.deepEqual(findValuePaths(data, "45"), [{ path: "data['count']", value: 45, segments: ["count"] }]);
+  assert.deepEqual(findValuePaths(data, "false"), [{ path: "data['flag']", value: false, segments: ["flag"] }]);
+  assert.deepEqual(findValuePaths(data, "null"), [{ path: "data['missing']", value: null, segments: ["missing"] }]);
   assert.deepEqual(findValuePaths(data, ""), []);
   assert.deepEqual(findValuePaths(data, "not found"), []);
 });
 
 test("finds a root primitive without searching property names", () => {
-  assert.deepEqual(findValuePaths("普通号", "普通"), [{ path: "data", value: "普通号" }]);
+  assert.deepEqual(findValuePaths("普通号", "普通"), [{ path: "data", value: "普通号", segments: [] }]);
   assert.deepEqual(findValuePaths({ 普通号: "别的值" }, "普通号"), []);
 });

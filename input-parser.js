@@ -195,22 +195,22 @@
     const term = query.trim();
     if (!term) return [];
     const matches = [];
-    const stack = [{ value, path: "data" }];
+    const stack = [{ value, path: "data", segments: [] }];
     while (stack.length) {
       const current = stack.pop();
       if (Array.isArray(current.value)) {
         for (let index = current.value.length - 1; index >= 0; index--) {
-          stack.push({ value: current.value[index], path: `${current.path}[${index}]` });
+          stack.push({ value: current.value[index], path: `${current.path}[${index}]`, segments: [...current.segments, index] });
         }
       } else if (current.value !== null && typeof current.value === "object") {
         for (const [key, child] of Object.entries(current.value).reverse()) {
           // Use Python-compatible bracket notation; escape keys to keep paths copyable.
           const escaped = key.replaceAll("\\", "\\\\").replaceAll("'", "\\'")
             .replaceAll("\n", "\\n").replaceAll("\r", "\\r");
-          stack.push({ value: child, path: `${current.path}['${escaped}']` });
+          stack.push({ value: child, path: `${current.path}['${escaped}']`, segments: [...current.segments, key] });
         }
       } else if (String(current.value).includes(term)) {
-        matches.push({ path: current.path, value: current.value });
+        matches.push({ path: current.path, value: current.value, segments: current.segments });
       }
     }
     return matches;

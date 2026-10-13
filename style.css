@@ -260,6 +260,11 @@ kbd {
 }
 .value-search-row code { flex: 1 1 260px; overflow-wrap: anywhere; font-size: 14px; }
 .value-search-value { color: #4b5563; font-size: 14px; overflow-wrap: anywhere; }
+.value-search-value mark { background: #ffe08a; color: #241900; border-radius: 3px; padding: 1px 2px; }
+.ace_marker-layer .value-match-highlight { position: absolute; background: rgba(245, 179, 47, 0.34); border-radius: 3px; }
+.ace_marker-layer .value-match-current { position: absolute; background: rgba(244, 145, 30, 0.55); outline: 2px solid #ac5500; border-radius: 3px; }
+.jsoneditor-value.value-match-highlight { background: #ffe08a !important; color: #241900 !important; border-radius: 3px; }
+.jsoneditor-value.value-match-current { background: #ffad4b !important; color: #241900 !important; outline: 2px solid #ac5500; border-radius: 3px; }
 
 .split-header {
   display: flex;

@@ -55,8 +55,13 @@ const splitTitle = document.getElementById("splitTitle");
 const valueSearchForm = document.getElementById("valueSearchForm");
 const valueSearchInput = document.getElementById("valueSearchInput");
 const valueSearchResults = document.getElementById("valueSearchResults");
+const clearValueSearchButton = document.getElementById("clearValueSearch");
 let splitValues = [];
 let searchTimer;
+let valueMatches = [];
+let codeHighlightIds = [];
+let treeHighlights = [];
+let jumpedToCodeValue = false;
 
 initEditor();
 bindControls();
@@ -82,6 +87,7 @@ function initEditor() {
       updateMeta();
       applyEditorFontSize();
       scheduleDraftSave();
+      scheduleValueSearch();
       setStatus(`Switched to ${newMode.toUpperCase()} mode.`, "success");
     }
   });
@@ -127,7 +133,22 @@ function bindControls() {
     renderValueSearch();
   });
   valueSearchInput.addEventListener("input", scheduleValueSearch);
+  clearValueSearchButton.addEventListener("click", () => {
+    window.clearTimeout(searchTimer);
+    valueSearchInput.value = "";
+    valueMatches = [];
+    clearValueHighlights();
+    if (jumpedToCodeValue && editor.aceEditor) editor.aceEditor.clearSelection();
+    jumpedToCodeValue = false;
+    valueSearchResults.replaceChildren();
+    setStatus("已清除查找和高亮。", "success");
+  });
   valueSearchResults.addEventListener("click", async (event) => {
+    const jumpButton = event.target.closest("[data-jump-index]");
+    if (jumpButton) {
+      jumpToValue(Number(jumpButton.dataset.jumpIndex));
+      return;
+    }
     const button = event.target.closest("[data-copy-path]");
     if (!button) return;
     const path = button.dataset.copyPath;
@@ -310,6 +331,8 @@ function scheduleValueSearch() {
 
 function renderValueSearch() {
   const query = valueSearchInput.value.trim();
+  clearValueHighlights();
+  valueMatches = [];
   valueSearchResults.replaceChildren();
   if (!query) return;
   // Keep search non-destructive: search the editor's current value without normalizing it.
@@ -322,24 +345,115 @@ function renderValueSearch() {
     return;
   }
   const matches = JsonInputParser.findValuePaths(parsed.value, query);
+  valueMatches = matches;
   summary.textContent = matches.length ? `找到 ${matches.length} 条匹配路径` : "没有找到匹配的值。";
   valueSearchResults.appendChild(summary);
-  for (const match of matches) {
+  for (const [index, match] of matches.entries()) {
     const row = document.createElement("div");
     row.className = "value-search-row";
     const path = document.createElement("code");
     path.textContent = match.path;
     const value = document.createElement("span");
     value.className = "value-search-value";
-    value.textContent = `值：${JSON.stringify(match.value)}`;
+    const renderedValue = JSON.stringify(match.value);
+    value.append("值：");
+    const start = renderedValue.indexOf(query);
+    if (start === -1) {
+      value.append(renderedValue);
+    } else {
+      value.append(renderedValue.slice(0, start));
+      const mark = document.createElement("mark");
+      mark.textContent = renderedValue.slice(start, start + query.length);
+      value.append(mark, renderedValue.slice(start + query.length));
+    }
     const button = document.createElement("button");
     button.type = "button";
     button.className = "tool-button";
     button.textContent = "复制路径";
     button.dataset.copyPath = match.path;
-    row.append(path, value, button);
+    const jump = document.createElement("button");
+    jump.type = "button";
+    jump.className = "tool-button";
+    jump.textContent = "跳转位置";
+    jump.dataset.jumpIndex = index;
+    row.append(path, value, jump, button);
     valueSearchResults.appendChild(row);
   }
+  highlightValues();
+}
+
+function clearValueHighlights() {
+  const ace = editor?.aceEditor;
+  if (ace) {
+    for (const id of codeHighlightIds) ace.session.removeMarker(id);
+  }
+  codeHighlightIds = [];
+  for (const node of treeHighlights) node.classList.remove("value-match-highlight", "value-match-current");
+  treeHighlights = [];
+}
+
+function highlightValues(activeIndex = -1) {
+  clearValueHighlights();
+  if (!valueMatches.length) return;
+  if (currentMode === "code" && editor.aceEditor) {
+    let locations;
+    const text = editor.getText();
+    try { locations = JsonValueLocations.locateValues(text); } catch (error) { return; }
+    const ace = editor.aceEditor;
+    const Range = ace.getSelectionRange().constructor;
+    // Limit markers for very large matches to keep Ace responsive. Every result remains navigable.
+    for (const [index, match] of valueMatches.entries()) {
+      if (index >= 300 && index !== activeIndex) continue;
+      const span = locations.get(JSON.stringify(match.segments));
+      if (!span) continue;
+      const start = JsonValueLocations.textPosition(text, span.start);
+      const end = JsonValueLocations.textPosition(text, span.end);
+      codeHighlightIds.push(ace.session.addMarker(new Range(start.row, start.column, end.row, end.column),
+        index === activeIndex ? "value-match-current" : "value-match-highlight", "text", false));
+    }
+  } else if (currentMode === "tree" && editor.node) {
+    for (const [index, match] of valueMatches.entries()) {
+      const node = editor.node.findNodeByPath(match.segments);
+      const element = node?.dom?.value;
+      if (element?.isConnected) {
+        element.classList.add(index === activeIndex ? "value-match-current" : "value-match-highlight");
+        treeHighlights.push(element);
+      }
+    }
+  }
+}
+
+function jumpToValue(index) {
+  const match = valueMatches[index];
+  if (!match) return;
+  if (currentMode === "code") {
+    let locations;
+    try { locations = JsonValueLocations.locateValues(editor.getText()); } catch (error) {
+      // Python-style input has no strict JSON offsets. Normalize only when the user explicitly jumps.
+      const parsed = readJsonSilently();
+      if (!parsed.ok) return;
+      renderSerializedJson(parsed.value, 2);
+      updateMeta();
+      saveDraft();
+      locations = JsonValueLocations.locateValues(editor.getText());
+    }
+    const span = locations.get(JSON.stringify(match.segments));
+    if (!span) return;
+    const ace = editor.aceEditor;
+    const start = JsonValueLocations.textPosition(editor.getText(), span.start);
+    const end = JsonValueLocations.textPosition(editor.getText(), span.end);
+    ace.scrollToLine(start.row, true, true, () => {});
+    ace.selection.setSelectionRange(new (ace.getSelectionRange().constructor)(start.row, start.column, end.row, end.column));
+    ace.focus();
+    jumpedToCodeValue = true;
+  } else {
+    editor.expand({ path: match.segments, withPath: true, isExpand: true, recursive: false });
+    const node = editor.node.findNodeByPath(match.segments);
+    if (!node) return;
+    if (node.dom.value?.isConnected) node.dom.value.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  highlightValues(index);
+  setStatus(`已定位：${match.path}`, "success");
 }
 
 function compactJson() {
